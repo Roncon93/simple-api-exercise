@@ -1,5 +1,8 @@
 ﻿namespace SimpleApiProject.Models
 {
+    /// <summary>
+    /// Represents a record in the data import CSV file.
+    /// </summary>
     public class DataImportRecord
     {
         public string Id => $"{CompanyId}{EmployeeNumber}";
@@ -25,18 +28,6 @@
         public string EmployeeDepartment { get; set; } = string.Empty;
 
         public DateTime? HireDate { get; set; }
-
-        public string ManagerEmployeeNumber { get; set; } = string.Empty;
-    }
-
-    public class DataImportCompany
-    {
-        public int CompanyId { get; set; }
-    }
-
-    public class DataImportEmployee
-    {
-        public string EmployeeNumber { get; set; } = string.Empty;
 
         public string ManagerEmployeeNumber { get; set; } = string.Empty;
     }

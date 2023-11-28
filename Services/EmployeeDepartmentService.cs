@@ -3,13 +3,6 @@ using SimpleApiProject.Models;
 
 namespace SimpleApiProject.Services
 {
-    public interface IEmployeeDepartmentService
-    {
-        Task CreateMany(IEnumerable<EmployeeDepartment> departments, CancellationToken token = default);
-
-        Task RemoveMany(CancellationToken token = default);
-    }
-
     public class EmployeeDepartmentService : IEmployeeDepartmentService
     {
         private readonly IRepository<EmployeeDepartment> repository;
@@ -19,10 +12,8 @@ namespace SimpleApiProject.Services
             this.repository = repository;
         }
 
-        public async Task CreateMany(IEnumerable<EmployeeDepartment> departments, CancellationToken token = default) =>
-            await repository.CreateMany(departments, token);
-
-        public async Task RemoveMany(CancellationToken token = default) =>
-            await repository.RemoveMany(token);
+        /// <inheritdoc/>
+        public async Task RemoveAll(CancellationToken token = default) =>
+            await repository.RemoveAll(token);
     }
 }

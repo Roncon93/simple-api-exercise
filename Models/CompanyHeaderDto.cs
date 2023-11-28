@@ -1,7 +1,7 @@
 ﻿namespace SimpleApiProject.Models
 {
     /// <summary>
-    /// Represents the company surface information.
+    /// Represents the company public facing DTO with surface information.
     /// </summary>
     public class CompanyHeaderDto
     {

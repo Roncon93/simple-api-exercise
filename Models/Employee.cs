@@ -1,5 +1,8 @@
 ﻿namespace SimpleApiProject.Models
 {
+    /// <summary>
+    /// The database entity representing an employee.
+    /// </summary>
     public class Employee
     {
         public string EmployeeNumber { get; set; } = string.Empty;

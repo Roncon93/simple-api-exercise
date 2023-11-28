@@ -1,32 +1,27 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
-using SimpleApiProject.Data;
 using SimpleApiProject.Models;
 using System.Globalization;
 
 namespace SimpleApiProject.Services
 {
-    public interface IDataImportService
-    {
-        Task<IEnumerable<string>> Import(IFormFile file, CancellationToken cancellationToken = default);
-    }
-
     public class DataImportService : IDataImportService
     {
-        private readonly IRepository<Company> companyRepository;
-        private readonly IRepository<Employee> employeeRepository;
+        private readonly ICompanyService companyService;
+        private readonly IEmployeeService employeeService;
         private readonly IEmployeeDepartmentService employeeDepartmentService;
 
         public DataImportService(
-            IRepository<Company> companyRepository,
-            IRepository<Employee> employeeRepository,
+            ICompanyService companyRepository,
+            IEmployeeService employeeRepository,
             IEmployeeDepartmentService employeeDepartmentService)
         {
-            this.companyRepository = companyRepository;
-            this.employeeRepository = employeeRepository;
+            this.companyService = companyRepository;
+            this.employeeService = employeeRepository;
             this.employeeDepartmentService = employeeDepartmentService;
         }
 
+        /// <inheritdoc/>
         public async Task<IEnumerable<string>> Import(IFormFile file, CancellationToken cancellationToken = default)
         {
             var recordsProcessed = new Dictionary<string, bool>();
@@ -42,9 +37,12 @@ namespace SimpleApiProject.Services
 
             foreach (var row in records)
             {
+                // Invalidate employee records with missing manager records
                 ValidateManagerInfo(row.Value, records, recordsProcessed, errors);
 
-                if (row.Value.CompanyId is not null && !companies.ContainsKey(row.Value.CompanyId.Value))
+                // Add a companies that haven't been seen before
+                if (row.Value.CompanyId is not null &&
+                    !companies.ContainsKey(row.Value.CompanyId.Value))
                 {
                     companies[row.Value.CompanyId.Value] = new()
                     {
@@ -54,6 +52,7 @@ namespace SimpleApiProject.Services
                     };
                 }
 
+                // Add employee departments that haven't been seen before
                 if (!string.IsNullOrWhiteSpace(row.Value.EmployeeDepartment) &&
                     !departments.ContainsKey(row.Value.EmployeeDepartment))
                 {
@@ -64,6 +63,7 @@ namespace SimpleApiProject.Services
                     };
                 }
 
+                // Only store employee records that are valid
                 if (recordsProcessed[row.Value.Id])
                 {
                     validEmployees.Add(new()
@@ -74,20 +74,37 @@ namespace SimpleApiProject.Services
                         LastName = row.Value.EmployeeLastName,
                         Email = row.Value.EmployeeEmail,
                         HireDate = row.Value.HireDate,
-                        Company = companies[row.Value.CompanyId!.Value],
-                        Department = departments[row.Value.EmployeeDepartment]
+                        Company = companies[row.Value.CompanyId!.Value], // Creates missing company entities
+                        Department = departments[row.Value.EmployeeDepartment] // Creates missing employee department entities
                     });
                 }
             }
 
-            await companyRepository.RemoveMany(cancellationToken);
-            await employeeDepartmentService.RemoveMany(cancellationToken);
-            await employeeRepository.RemoveMany(cancellationToken);
-            await employeeRepository.CreateMany(validEmployees, cancellationToken);
+            // Remove all company and employee related entities
+            await companyService.RemoveAll(cancellationToken);
+            await employeeDepartmentService.RemoveAll(cancellationToken);
+            await employeeService.RemoveAll(cancellationToken);
+
+            // Insert all valid company, employee and employee department entities found
+            // NOTE: The one-to-many relationship the employee entity has will also insert missing
+            // company and employee department entities
+            await employeeService.CreateMany(validEmployees, cancellationToken);
 
             return errors;
         }
 
+        /// <summary>
+        /// Loads CSV file records into a collection of <see cref="DataImportRecord"/>.
+        /// 
+        /// Note: This method will return only records that have the required properties present.
+        /// Invalid records will be added to the list of error messages. This is a performance improvement
+        /// as records are checked while they're being loaded for the first time without having to iterate
+        /// over them again for required properties validations.
+        /// </summary>
+        /// <param name="file">The CSV file containing the company and employee information.</param>
+        /// <param name="errors">The list of errors to add validation errors to.</param>
+        /// <param name="cancellationToken">The operation's cancellation token.</param>
+        /// <returns>The collection of records without missing required properties..</returns>
         private static async Task<Dictionary<string, DataImportRecord>> LoadDataImportRecords(
             IFormFile file,
             List<string> errors,
@@ -99,7 +116,7 @@ namespace SimpleApiProject.Services
             await file.CopyToAsync(stream, cancellationToken);
             stream.Position = 0;
 
-            using StreamReader streamReader = new StreamReader(stream);
+            using StreamReader streamReader = new(stream);
             using var csvReader = new CsvReader(streamReader, new CsvConfiguration(CultureInfo.InvariantCulture));
 
             while (await csvReader.ReadAsync())
@@ -111,7 +128,7 @@ namespace SimpleApiProject.Services
                     continue;
                 }
 
-                var isValid = ValidateProperties(record, errors) && ValidateExistingRecord(records, record, errors);
+                var isValid = ValidateRequiredProperties(record, errors) && ValidateExistingRecord(records, record, errors);
 
                 if (isValid)
                 {
@@ -127,7 +144,14 @@ namespace SimpleApiProject.Services
             return records;
         }
 
-        private static bool ValidateProperties(DataImportRecord record, List<string> errors)
+        /// <summary>
+        /// Validates a record's required properties to make sure
+        /// they are not missing.
+        /// </summary>
+        /// <param name="record">The record to validate.</param>
+        /// <param name="errors">The list of errors to add validation messages to.</param>
+        /// <returns>True if the record is valid, false otherwise.</returns>
+        private static bool ValidateRequiredProperties(DataImportRecord record, List<string> errors)
         {
             bool isValid = true;
 
@@ -158,6 +182,14 @@ namespace SimpleApiProject.Services
             return isValid;
         }
 
+        /// <summary>
+        /// Validates that records do not have the same
+        /// key identifying properties.
+        /// </summary>
+        /// <param name="records">The collection of all records.</param>
+        /// <param name="record">The record to validate.</param>
+        /// <param name="errors">The list of erros to add validation errors to.</param>
+        /// <returns>True if the record is unique, false otherwise.</returns>
         private static bool ValidateExistingRecord(Dictionary<string, DataImportRecord> records, DataImportRecord record, List<string> errors)
         {
             if (records.TryGetValue(record.Id, out DataImportRecord? existingEmployeeRecord))
@@ -170,6 +202,15 @@ namespace SimpleApiProject.Services
             return true;
         }
 
+        /// <summary>
+        /// Validates that an employee record is not missing
+        /// their manager's record infromation.
+        /// </summary>
+        /// <param name="record">The record to validate.</param>
+        /// <param name="records">The collection of all the records (contains manager record information).</param>
+        /// <param name="recordsProcessed">The collection of records that have already been validated.</param>
+        /// <param name="errors">The list of errors to add validation messages to.</param>
+        /// <returns>True if the record has manager record information, false otherwise.</returns>
         private static bool ValidateManagerInfo(
             DataImportRecord record,
             Dictionary<string, DataImportRecord> records,

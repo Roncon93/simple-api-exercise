@@ -4,8 +4,12 @@ using SimpleApiProject.Models;
 
 namespace SimpleApiProject.Data.Sqlite.Contexts.Configurations
 {
+    /// <summary>
+    /// Configures the <see cref="EmployeeDepartment"/> database entity.
+    /// </summary>
     public class EmployeeDepartmentEnityConfiguration : IEntityTypeConfiguration<EmployeeDepartment>
     {
+        /// <inheritdoc/>
         public void Configure(EntityTypeBuilder<EmployeeDepartment> builder)
         {
             builder.ToTable("EmployeeDepartments");

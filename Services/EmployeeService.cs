@@ -1,19 +1,8 @@
 ﻿using SimpleApiProject.Data;
 using SimpleApiProject.Models;
-using System.ComponentModel.Design;
-using System.Threading;
 
 namespace SimpleApiProject.Services
 {
-    public interface IEmployeeService
-    {
-        Task CreateMany(IEnumerable<Employee> employees, CancellationToken cancellationToken = default);
-
-        Task<Employee?> Find(int companyId, string employeeNumber, CancellationToken cancellationToken = default);
-
-        Task RemoveMany(CancellationToken cancellationToken = default);
-    }
-
     public class EmployeeService : IEmployeeService
     {
         private readonly IRepository<Employee> repository;
@@ -23,9 +12,11 @@ namespace SimpleApiProject.Services
             this.repository = repository;
         }
 
+        /// <inheritdoc/>
         public async Task CreateMany(IEnumerable<Employee> employees, CancellationToken cancellationToken = default) =>
             await repository.CreateMany(employees, cancellationToken);
 
+        /// <inheritdoc/>
         public async Task<Employee?> Find(int companyId, string employeeNumber, CancellationToken cancellationToken = default)
         {
             var employee = await repository.Find(e => e.CompanyId == companyId && e.EmployeeNumber == employeeNumber, cancellationToken);
@@ -38,9 +29,19 @@ namespace SimpleApiProject.Services
             return employee;
         }
 
-        public async Task RemoveMany(CancellationToken cancellationToken = default) =>
-            await repository.RemoveMany(cancellationToken);
+        /// <inheritdoc/>
+        public async Task RemoveAll(CancellationToken cancellationToken = default) =>
+            await repository.RemoveAll(cancellationToken);
 
+        /// <summary>
+        /// Recusively loads the list of an employee's managers starting with
+        /// their most immediate manager.
+        /// </summary>
+        /// <param name="companyId">The company ID of the employee and their managers.</param>
+        /// <param name="managerEmployeeNumber">The employee number of the employee's manager.</param>
+        /// <param name="managers">The list of managers to add to.</param>
+        /// <param name="cancellationToken">The operation's cancellation token.</param>
+        /// <returns>The list of managers found.</returns>
         private async Task<List<Employee>> FindManager(int companyId, string managerEmployeeNumber, List<Employee> managers, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(managerEmployeeNumber))
@@ -48,12 +49,17 @@ namespace SimpleApiProject.Services
                 return managers;
             }
 
-            var manager = await repository.Find(e => e.CompanyId == companyId && e.EmployeeNumber == managerEmployeeNumber, cancellationToken);
+            var manager = await repository.Find(e =>
+                e.CompanyId == companyId &&
+                e.EmployeeNumber == managerEmployeeNumber, cancellationToken);
 
             if (manager is not null)
             {
+                // Add to the list before fetching the next manager
+                // to ensure the most senior manager is last in the list
                 managers.Add(manager);
 
+                // Find the manager's manager if they have one
                 await FindManager(companyId, manager.ManagerEmployeeNumber, managers, cancellationToken);
             }
 

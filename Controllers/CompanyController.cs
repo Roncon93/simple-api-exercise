@@ -22,10 +22,19 @@ namespace SimpleApiProject.Controllers
             this.employeeService = employeeService;
         }
 
+        /// <summary>
+        /// Retrieves all the company entities.
+        /// </summary>
+        /// <returns>The list of companies in a <see cref="CompanyHeaderDto"/> view.</returns>
         [HttpGet]
         public async Task<IEnumerable<CompanyHeaderDto>> GetAll() =>
-            (await companyService.FindMany()).ToCompanyHeaderDto();
+            (await companyService.FindAll()).ToCompanyHeaderDto();
 
+        /// <summary>
+        /// Retrieves a single company by its ID.
+        /// </summary>
+        /// <param name="companyId">The ID of the company to look for.</param>
+        /// <returns>200 OK if the company was found, 404 Not Found otherwise.</returns>
         [HttpGet("{companyId}")]
         public async Task<IActionResult> GetCompany(int companyId)
         {
@@ -39,6 +48,12 @@ namespace SimpleApiProject.Controllers
             return Ok(company.ToCompanyDto());
         }
 
+        /// <summary>
+        /// Retrieves a single employee by its company ID and employee number.
+        /// </summary>
+        /// <param name="companyId">The ID of the company to look for.</param>
+        /// <param name="employeeNumber">The number of the employee to look for.</param>
+        /// <returns>200 OK if the employee was found, 404 Not Found otherwise.</returns>
         [HttpGet("{companyId}/Employees/{employeeNumber}")]
         public async Task<IActionResult> GetEmployee(int companyId, string employeeNumber)
         {

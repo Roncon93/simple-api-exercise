@@ -1,5 +1,8 @@
 ﻿namespace SimpleApiProject.Models
 {
+    /// <summary>
+    /// The database entity representing an employee department.
+    /// </summary>
     public class EmployeeDepartment
     {
         public int Id { get; set; }

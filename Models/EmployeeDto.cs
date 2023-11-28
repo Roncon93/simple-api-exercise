@@ -1,7 +1,7 @@
 ﻿namespace SimpleApiProject.Models
 {
     /// <summary>
-    /// Represents the employee information.
+    /// Represents the employee public facing DTO information.
     /// </summary>
     public class EmployeeDto : EmployeeHeaderDto
     {
