@@ -19,6 +19,11 @@ namespace SimpleApiProject.Controllers
             this.dataImportService = dataImportService;
         }
 
+        /// <summary>
+        /// Imports a CSV file containing the company and employee information.
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<IActionResult> Upload(IFormFile file)
         {

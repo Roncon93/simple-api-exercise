@@ -29,6 +29,13 @@ namespace SimpleApiProject.Services
 
             var records = await LoadDataImportRecords(file, errors, cancellationToken);      
 
+            if (!records.Any())
+            {
+                errors.Add($"No valid records were found in the file {file.FileName}");
+
+                return errors;
+            }
+
             var companies = new Dictionary<int, Company>();
             var departments = new Dictionary<string, EmployeeDepartment>();
             var validEmployees = new List<Employee>();
