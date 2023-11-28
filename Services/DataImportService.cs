@@ -8,7 +8,7 @@ namespace SimpleApiProject.Services
 {
     public interface IDataImportService
     {
-        void Import(IFormFile file, CancellationToken cancellationToken = default);
+        Task<IEnumerable<string>> Import(IFormFile file, CancellationToken cancellationToken = default);
     }
 
     public class DataImportService : IDataImportService
@@ -27,7 +27,7 @@ namespace SimpleApiProject.Services
             this.employeeDepartmentService = employeeDepartmentService;
         }
 
-        public async void Import(IFormFile file, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<string>> Import(IFormFile file, CancellationToken cancellationToken = default)
         {
             var recordsProcessed = new Dictionary<string, bool>();
             var errors = new List<string>();
@@ -84,6 +84,8 @@ namespace SimpleApiProject.Services
             await employeeDepartmentService.RemoveMany(cancellationToken);
             await employeeRepository.RemoveMany(cancellationToken);
             await employeeRepository.CreateMany(validEmployees, cancellationToken);
+
+            return errors;
         }
 
         private static async Task<Dictionary<string, DataImportRecord>> LoadDataImportRecords(
@@ -132,13 +134,13 @@ namespace SimpleApiProject.Services
             if (record.CompanyId is null)
             {
                 isValid = false;
-                errors.Add($"Company ID is missing for record with employee number {record.EmployeeNumber}");
+                errors.Add($"Company ID is missing for record with employee number [{record.EmployeeNumber}]");
             }
 
             else if (string.IsNullOrWhiteSpace(record.EmployeeNumber))
             {
                 isValid = false;
-                errors.Add($"Employee number is missing for employee {record.EmployeeFullName} and company ID {record.CompanyId}");
+                errors.Add($"Employee # is missing for employee [{record.EmployeeFullName}] in company with ID [{record.CompanyId}]");
             }
 
             //else if (record.EmployeeNumber == record.ManagerEmployeeNumber)
@@ -160,7 +162,7 @@ namespace SimpleApiProject.Services
         {
             if (records.TryGetValue(record.Id, out DataImportRecord? existingEmployeeRecord))
             {
-                errors.Add($"Employees {existingEmployeeRecord.EmployeeFullName} & {record.EmployeeFullName} have the same employee # {record.EmployeeNumber} in company with ID {record.CompanyId}");
+                errors.Add($"Employees [{existingEmployeeRecord.EmployeeFullName}] & [{record.EmployeeFullName}] have the same employee # [{record.EmployeeNumber}] in company with ID [{record.CompanyId}]");
 
                 return false;
             }
@@ -194,7 +196,7 @@ namespace SimpleApiProject.Services
                 {
                     isValid = false;
 
-                    errors.Add($"Record missing for manager with employee number {record.ManagerEmployeeNumber} in company with ID {record.CompanyId!.Value}");
+                    errors.Add($"Employee [{record.EmployeeNumber}] in company with ID [{record.CompanyId!.Value}] is missing manager record with employee # [{record.ManagerEmployeeNumber}]");
                 }
 
                 else

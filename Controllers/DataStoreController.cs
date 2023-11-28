@@ -20,9 +20,14 @@ namespace SimpleApiProject.Controllers
         }
 
         [HttpPost]
-        public IActionResult Upload(IFormFile file)
+        public async Task<IActionResult> Upload(IFormFile file)
         {
-            dataImportService.Import(file);
+            var errors = await dataImportService.Import(file);
+
+            if (errors.Any())
+            {
+                return Ok(new { Errors = errors });
+            }
 
             return Ok();
         }
