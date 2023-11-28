@@ -12,6 +12,6 @@ namespace SimpleApiProject.Data.Sqlite.Repositories
         }
 
         public override IQueryable<Employee> GetSet(DbContext context) =>
-            context.Set<Employee>().Include(c => c.Company);
+            context.Set<Employee>().Include(e => e.Company).Include(e => e.Department);
     }
 }

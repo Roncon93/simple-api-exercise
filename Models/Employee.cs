@@ -10,11 +10,9 @@
 
         public string LastName { get; set; } = string.Empty;
 
-        public string EmployeeFullName => $"{FirstName} {LastName}";
+        public string FullName => $"{FirstName} {LastName}";
 
         public string Email { get; set; } = string.Empty;
-
-        public string Department { get; set; } = string.Empty;
 
         public DateTime? HireDate { get; set; }
 
@@ -23,5 +21,9 @@
         public int CompanyId { get; set; }
 
         public virtual Company Company { get; set; } = new();
+
+        public int DepartmentId { get; set; }
+
+        public virtual EmployeeDepartment Department { get; set; } = new();
     }
 }

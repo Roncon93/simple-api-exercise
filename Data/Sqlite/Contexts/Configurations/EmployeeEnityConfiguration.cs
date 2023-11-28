@@ -13,7 +13,7 @@ namespace SimpleApiProject.Data.Sqlite.Contexts.Configurations
             builder.HasKey(e => new { e.CompanyId, e.EmployeeNumber });
 
             builder.Ignore(e => e.Managers)
-                .Ignore(e => e.EmployeeFullName);
+                .Ignore(e => e.FullName);
         }
     }
 }

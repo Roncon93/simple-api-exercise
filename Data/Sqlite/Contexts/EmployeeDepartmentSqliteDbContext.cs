@@ -3,9 +3,9 @@ using SimpleApiProject.Data.Sqlite.Contexts.Configurations;
 
 namespace SimpleApiProject.Data.Sqlite.Contexts
 {
-    public class EmployeeSqliteDbContext : DbContext
+    public class EmployeeDepartmentSqliteDbContext : DbContext
     {
-        public EmployeeSqliteDbContext(DbContextOptions options) : base(options)
+        public EmployeeDepartmentSqliteDbContext(DbContextOptions options) : base(options)
         {
         }
 

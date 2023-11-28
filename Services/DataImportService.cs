@@ -15,11 +15,16 @@ namespace SimpleApiProject.Services
     {
         private readonly IRepository<Company> companyRepository;
         private readonly IRepository<Employee> employeeRepository;
+        private readonly IEmployeeDepartmentService employeeDepartmentService;
 
-        public DataImportService(IRepository<Company> companyRepository, IRepository<Employee> employeeRepository)
+        public DataImportService(
+            IRepository<Company> companyRepository,
+            IRepository<Employee> employeeRepository,
+            IEmployeeDepartmentService employeeDepartmentService)
         {
             this.companyRepository = companyRepository;
             this.employeeRepository = employeeRepository;
+            this.employeeDepartmentService = employeeDepartmentService;
         }
 
         public async void Import(IFormFile file, CancellationToken cancellationToken = default)
@@ -30,7 +35,10 @@ namespace SimpleApiProject.Services
             var records = await LoadDataImportRecords(file, errors, cancellationToken);      
 
             var companies = new Dictionary<int, Company>();
+            var departments = new Dictionary<string, EmployeeDepartment>();
             var validEmployees = new List<Employee>();
+
+            var departmentsIdCounter = 0;
 
             foreach (var row in records)
             {
@@ -46,6 +54,16 @@ namespace SimpleApiProject.Services
                     };
                 }
 
+                if (!string.IsNullOrWhiteSpace(row.Value.EmployeeDepartment) &&
+                    !departments.ContainsKey(row.Value.EmployeeDepartment))
+                {
+                    departments[row.Value.EmployeeDepartment] = new()
+                    {
+                        Id = ++departmentsIdCounter,
+                        Name = row.Value.EmployeeDepartment
+                    };
+                }
+
                 if (recordsProcessed[row.Value.Id])
                 {
                     validEmployees.Add(new()
@@ -56,12 +74,14 @@ namespace SimpleApiProject.Services
                         LastName = row.Value.EmployeeLastName,
                         Email = row.Value.EmployeeEmail,
                         HireDate = row.Value.HireDate,
-                        Company = companies[row.Value.CompanyId!.Value]
+                        Company = companies[row.Value.CompanyId!.Value],
+                        Department = departments[row.Value.EmployeeDepartment]
                     });
                 }
             }
 
             await companyRepository.RemoveMany(cancellationToken);
+            await employeeDepartmentService.RemoveMany(cancellationToken);
             await employeeRepository.RemoveMany(cancellationToken);
             await employeeRepository.CreateMany(validEmployees, cancellationToken);
         }

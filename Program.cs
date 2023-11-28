@@ -19,11 +19,16 @@ builder.Services.AddDbContextFactory<CompanySqliteDbContext>(
 builder.Services.AddDbContextFactory<EmployeeSqliteDbContext>(
     options => options.UseSqlite(sqliteConnectionString));
 
+builder.Services.AddDbContextFactory<EmployeeDepartmentSqliteDbContext>(
+    options => options.UseSqlite(sqliteConnectionString));
+
 builder.Services.AddSingleton<IRepository<Company>, CompanyRepository>();
 builder.Services.AddSingleton<IRepository<Employee>, EmployeeRepository>();
+builder.Services.AddSingleton<IRepository<EmployeeDepartment>, EmployeeDepartmentRepository>();
 
 builder.Services.AddTransient<ICompanyService, CompanyService>();
 builder.Services.AddTransient<IEmployeeService, EmployeeService>();
+builder.Services.AddTransient<IEmployeeDepartmentService, EmployeeDepartmentService>();
 builder.Services.AddTransient<IDataImportService, DataImportService>();
 
 builder.Services.AddControllers();

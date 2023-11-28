@@ -6,16 +6,16 @@
             employees.Select(e => new EmployeeHeaderDto()
             {
                 EmployeeNumber = e.EmployeeNumber,
-                FullName = e.EmployeeFullName
+                FullName = e.FullName
             });
 
         public static EmployeeDto ToEmployeeDto(this Employee employee) =>
             new()
             {
                 EmployeeNumber = employee.EmployeeNumber,
-                Department = employee.Department,
+                Department = employee.Department.Name,
                 Email = employee.Email,
-                FullName = employee.EmployeeFullName,
+                FullName = employee.FullName,
                 HireDate = employee.HireDate,
                 Managers = employee.Managers.ToEmployeeHeaderDto().ToArray()
             };
