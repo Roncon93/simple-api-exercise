@@ -27,7 +27,7 @@ namespace SimpleApiProject.Services
             var recordsProcessed = new Dictionary<string, bool>();
             var errors = new List<string>();
 
-            var records = await LoadDataImportRecords(file, errors, cancellationToken);      
+            var records = await LoadDataImportRecords(file, recordsProcessed, errors, cancellationToken);      
 
             if (!records.Any())
             {
@@ -114,6 +114,7 @@ namespace SimpleApiProject.Services
         /// <returns>The collection of records without missing required properties..</returns>
         private static async Task<Dictionary<string, DataImportRecord>> LoadDataImportRecords(
             IFormFile file,
+            Dictionary<string, bool> recordsProcessed,
             List<string> errors,
             CancellationToken cancellationToken = default)
         {
@@ -135,7 +136,7 @@ namespace SimpleApiProject.Services
                     continue;
                 }
 
-                var isValid = ValidateRequiredProperties(record, errors) && ValidateExistingRecord(records, record, errors);
+                var isValid = ValidateRequiredProperties(record, errors) && ValidateExistingRecord(records, record, recordsProcessed, errors);
 
                 if (isValid)
                 {
@@ -197,10 +198,16 @@ namespace SimpleApiProject.Services
         /// <param name="record">The record to validate.</param>
         /// <param name="errors">The list of erros to add validation errors to.</param>
         /// <returns>True if the record is unique, false otherwise.</returns>
-        private static bool ValidateExistingRecord(Dictionary<string, DataImportRecord> records, DataImportRecord record, List<string> errors)
+        private static bool ValidateExistingRecord(
+            Dictionary<string, DataImportRecord> records,
+            DataImportRecord record,
+            Dictionary<string, bool>  recordsProcessed,
+            List<string> errors)
         {
             if (records.TryGetValue(record.Id, out DataImportRecord? existingEmployeeRecord))
             {
+                recordsProcessed.TryAdd(record.Id, false);
+
                 errors.Add($"Employees [{existingEmployeeRecord.EmployeeFullName}] & [{record.EmployeeFullName}] have the same employee # [{record.EmployeeNumber}] in company with ID [{record.CompanyId}]");
 
                 return false;
