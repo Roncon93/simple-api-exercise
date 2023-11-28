@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SimpleApiProject.Models;
+using SimpleApiProject.Services;
 
 namespace SimpleApiProject.Controllers
 {
@@ -11,28 +12,44 @@ namespace SimpleApiProject.Controllers
     public class CompanyController : ControllerBase
     {
         private readonly ILogger<CompanyController> logger;
+        private readonly ICompanyService companyService;
+        private readonly IEmployeeService employeeService;
 
-        public CompanyController(ILogger<CompanyController> logger)
+        public CompanyController(ILogger<CompanyController> logger, ICompanyService companyService, IEmployeeService employeeService)
         {
             this.logger = logger;
+            this.companyService = companyService;
+            this.employeeService = employeeService;
         }
 
         [HttpGet]
-        public IEnumerable<CompanyHeaderDto> GetAll()
-        {
-            throw new NotImplementedException();
-        }
+        public async Task<IEnumerable<CompanyHeaderDto>> GetAll() =>
+            (await companyService.FindMany()).ToCompanyHeaderDto();
 
         [HttpGet("{companyId}")]
-        public CompanyDto GetCompany(string companyId)
+        public async Task<IActionResult> GetCompany(int companyId)
         {
-            throw new NotImplementedException();
+            var company = await companyService.Find(companyId);
+
+            if (company is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(company.ToCompanyDto());
         }
 
         [HttpGet("{companyId}/Employees/{employeeNumber}")]
-        public EmployeeDto GetEmployee(string companyId, string employeeNumber)
+        public async Task<IActionResult> GetEmployee(int companyId, string employeeNumber)
         {
-            throw new NotImplementedException();
+            var employee = await employeeService.Find(companyId, employeeNumber);
+
+            if (employee is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(employee.ToEmployeeDto());
         }
     }
 }

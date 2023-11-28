@@ -1,23 +1,17 @@
-﻿using SimpleApiProject.Models;
-using System.Linq.Expressions;
+﻿using Microsoft.EntityFrameworkCore;
+using SimpleApiProject.Data.Sqlite.Contexts;
+using SimpleApiProject.Models;
 
 namespace SimpleApiProject.Data.Sqlite.Repositories
 {
-    public class CompanyRepository : IRepository<Company>
+    public class CompanyRepository : BaseRepository<Company, CompanySqliteDbContext>, IRepository<Company>
     {
-        public Task Create(Company entity, CancellationToken cancellationToken = default)
+        public CompanyRepository(ILogger<BaseRepository<Company, CompanySqliteDbContext>> logger, IDbContextFactory<CompanySqliteDbContext> contextFactory)
+            : base(logger, contextFactory)
         {
-            throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<Company>> FindAll(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task<Company?> FindOne(Expression<Func<Company, bool>> expression, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
+        public override IQueryable<Company> GetSet(DbContext context) =>
+            context.Set<Company>().Include(c => c.Employees);
     }
 }

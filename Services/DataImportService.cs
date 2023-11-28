@@ -1,5 +1,6 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
+using SimpleApiProject.Data;
 using SimpleApiProject.Models;
 using System.Globalization;
 
@@ -12,6 +13,15 @@ namespace SimpleApiProject.Services
 
     public class DataImportService : IDataImportService
     {
+        private readonly IRepository<Company> companyRepository;
+        private readonly IRepository<Employee> employeeRepository;
+
+        public DataImportService(IRepository<Company> companyRepository, IRepository<Employee> employeeRepository)
+        {
+            this.companyRepository = companyRepository;
+            this.employeeRepository = employeeRepository;
+        }
+
         public async void Import(IFormFile file, CancellationToken cancellationToken = default)
         {
             var recordsProcessed = new Dictionary<string, bool>();
@@ -19,8 +29,8 @@ namespace SimpleApiProject.Services
 
             var records = await LoadDataImportRecords(file, errors, cancellationToken);      
 
-            var companies = new Dictionary<int, DataImportCompany>();
-            var validEmployees = new List<DataImportEmployee>();
+            var companies = new Dictionary<int, Company>();
+            var validEmployees = new List<Employee>();
 
             foreach (var row in records)
             {
@@ -28,17 +38,32 @@ namespace SimpleApiProject.Services
 
                 if (row.Value.CompanyId is not null && !companies.ContainsKey(row.Value.CompanyId.Value))
                 {
-                    companies[row.Value.CompanyId.Value] = new() { CompanyId = row.Value.CompanyId.Value };
+                    companies[row.Value.CompanyId.Value] = new()
+                    {
+                        Id = row.Value.CompanyId.Value,
+                        Code = row.Value.CompanyCode,
+                        Description = row.Value.CompanyDescription
+                    };
                 }
 
                 if (recordsProcessed[row.Value.Id])
                 {
-                    validEmployees.Add(new() { EmployeeNumber = row.Value.EmployeeNumber });
+                    validEmployees.Add(new()
+                    {
+                        EmployeeNumber = row.Value.EmployeeNumber,
+                        ManagerEmployeeNumber = row.Value.ManagerEmployeeNumber,
+                        FirstName = row.Value.EmployeeFirstName,
+                        LastName = row.Value.EmployeeLastName,
+                        Email = row.Value.EmployeeEmail,
+                        HireDate = row.Value.HireDate,
+                        Company = companies[row.Value.CompanyId!.Value]
+                    });
                 }
             }
 
-            // Store companies
-            // Store employees
+            await companyRepository.RemoveMany(cancellationToken);
+            await employeeRepository.RemoveMany(cancellationToken);
+            await employeeRepository.CreateMany(validEmployees, cancellationToken);
         }
 
         private static async Task<Dictionary<string, DataImportRecord>> LoadDataImportRecords(
@@ -96,17 +121,17 @@ namespace SimpleApiProject.Services
                 errors.Add($"Employee number is missing for employee {record.EmployeeFullName} and company ID {record.CompanyId}");
             }
 
-            else if (record.EmployeeNumber == record.ManagerEmployeeNumber)
-            {
-                isValid = false;
-                errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot be their own manager");
-            }
+            //else if (record.EmployeeNumber == record.ManagerEmployeeNumber)
+            //{
+            //    isValid = false;
+            //    errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot be their own manager");
+            //}
 
-            else if (record.HireDate is null)
-            {
-                isValid = false;
-                errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot have an empty hire date");
-            }
+            //else if (record.HireDate is null)
+            //{
+            //    isValid = false;
+            //    errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot have an empty hire date");
+            //}
 
             return isValid;
         }

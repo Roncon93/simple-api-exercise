@@ -8,6 +8,6 @@
 
         public string Description { get; set; } = string.Empty;
 
-        public IEnumerable<Employee> Employees { get; set; } = Enumerable.Empty<Employee>();
+        public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
     }
 }

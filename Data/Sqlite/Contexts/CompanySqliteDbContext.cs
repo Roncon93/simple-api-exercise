@@ -1,19 +1,18 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SimpleApiProject.Models;
+using SimpleApiProject.Data.Sqlite.Contexts.Configurations;
 
 namespace SimpleApiProject.Data.Sqlite.Contexts
 {
     public class CompanySqliteDbContext : DbContext
     {
+        public CompanySqliteDbContext(DbContextOptions options) : base(options)
+        {
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            var entity = modelBuilder.Entity<Company>();
-            
-            entity.ToTable("Companies");
-
-            entity.HasKey(c => c.Id);
-
-            entity.HasMany(c => c.Employees).WithOne(e => e.Company);
+            modelBuilder.ApplyConfiguration(new CompanyEnityConfiguration());
+            modelBuilder.ApplyConfiguration(new EmployeeEnityConfiguration());
         }
     }
 }

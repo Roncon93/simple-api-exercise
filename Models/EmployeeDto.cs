@@ -9,7 +9,7 @@
 
         public string Department { get; set; } = string.Empty;
 
-        public DateTime HireDate { get; set; }
+        public DateTime? HireDate { get; set; }
 
         public EmployeeHeaderDto[] Managers { get; set; } = Array.Empty<EmployeeHeaderDto>();
     }
