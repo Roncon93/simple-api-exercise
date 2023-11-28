@@ -1,5 +1,6 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
+using SimpleApiProject.Models;
 using System.Globalization;
 
 namespace SimpleApiProject.Services
@@ -11,26 +12,26 @@ namespace SimpleApiProject.Services
 
     public class DataImportService : IDataImportService
     {
-        private readonly Dictionary<string, bool> rowsProcessed = [];
-        private readonly List<string> errors = [];
-
         public async void Import(IFormFile file, CancellationToken cancellationToken = default)
         {
-            var rows = await LoadDataImportRows(file, errors, cancellationToken);      
+            var recordsProcessed = new Dictionary<string, bool>();
+            var errors = new List<string>();
+
+            var records = await LoadDataImportRecords(file, errors, cancellationToken);      
 
             var companies = new Dictionary<int, DataImportCompany>();
             var validEmployees = new List<DataImportEmployee>();
 
-            foreach (var row in rows)
+            foreach (var row in records)
             {
-                Validate(row.Value, rows);
+                ValidateManagerInfo(row.Value, records, recordsProcessed, errors);
 
                 if (row.Value.CompanyId is not null && !companies.ContainsKey(row.Value.CompanyId.Value))
                 {
                     companies[row.Value.CompanyId.Value] = new() { CompanyId = row.Value.CompanyId.Value };
                 }
 
-                if (rowsProcessed[row.Value.Id])
+                if (recordsProcessed[row.Value.Id])
                 {
                     validEmployees.Add(new() { EmployeeNumber = row.Value.EmployeeNumber });
                 }
@@ -40,12 +41,12 @@ namespace SimpleApiProject.Services
             // Store employees
         }
 
-        private static async Task<Dictionary<string, DataImportRow>> LoadDataImportRows(
+        private static async Task<Dictionary<string, DataImportRecord>> LoadDataImportRecords(
             IFormFile file,
             List<string> errors,
             CancellationToken cancellationToken = default)
         {
-            var rows = new Dictionary<string, DataImportRow>();
+            var records = new Dictionary<string, DataImportRecord>();
 
             using var stream = new MemoryStream(new byte[file.Length]);
             await file.CopyToAsync(stream, cancellationToken);
@@ -56,127 +57,110 @@ namespace SimpleApiProject.Services
 
             while (await csvReader.ReadAsync())
             {
-                var record = csvReader.GetRecord<DataImportRow>();
+                var record = csvReader.GetRecord<DataImportRecord>();
 
                 if (record is null)
                 {
                     continue;
                 }
 
-                if (record.CompanyId is null)
-                {
-                    errors.Add($"Company ID is missing for record with employee number {record.EmployeeNumber}");
-                }
+                var isValid = ValidateProperties(record, errors) && ValidateExistingRecord(records, record, errors);
 
-                else if (string.IsNullOrWhiteSpace(record.EmployeeNumber))
+                if (isValid)
                 {
-                    errors.Add($"Employee number is missing for employee {record.EmployeeFullName} and company ID {record.CompanyId}");
-                }
-
-                else if (record.EmployeeNumber == record.ManagerEmployeeNumber)
-                {
-                    errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot be their own manager");
-                }
-
-                else if (record.HireDate is null)
-                {
-                    errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot have an empty hire date");
-                }
-
-                else if (rows.TryGetValue(record.Id, out DataImportRow? existingEmployeeRecord))
-                {
-                    rows.Remove(record.Id);
-
-                    errors.Add($"Employees {existingEmployeeRecord.EmployeeFullName} & {record.EmployeeFullName} have the same employee # {record.EmployeeNumber} in company with ID {record.CompanyId}");
+                    records[record.Id] = record;
                 }
 
                 else
                 {
-                    rows[record.Id] = record;
+                    records.Remove(record.Id);
                 }
             }
 
-            return rows;
+            return records;
         }
 
-        private bool Validate(DataImportRow row, Dictionary<string, DataImportRow> rows)
+        private static bool ValidateProperties(DataImportRecord record, List<string> errors)
+        {
+            bool isValid = true;
+
+            if (record.CompanyId is null)
+            {
+                isValid = false;
+                errors.Add($"Company ID is missing for record with employee number {record.EmployeeNumber}");
+            }
+
+            else if (string.IsNullOrWhiteSpace(record.EmployeeNumber))
+            {
+                isValid = false;
+                errors.Add($"Employee number is missing for employee {record.EmployeeFullName} and company ID {record.CompanyId}");
+            }
+
+            else if (record.EmployeeNumber == record.ManagerEmployeeNumber)
+            {
+                isValid = false;
+                errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot be their own manager");
+            }
+
+            else if (record.HireDate is null)
+            {
+                isValid = false;
+                errors.Add($"Employee {record.EmployeeNumber} in company with ID {record.CompanyId} cannot have an empty hire date");
+            }
+
+            return isValid;
+        }
+
+        private static bool ValidateExistingRecord(Dictionary<string, DataImportRecord> records, DataImportRecord record, List<string> errors)
+        {
+            if (records.TryGetValue(record.Id, out DataImportRecord? existingEmployeeRecord))
+            {
+                errors.Add($"Employees {existingEmployeeRecord.EmployeeFullName} & {record.EmployeeFullName} have the same employee # {record.EmployeeNumber} in company with ID {record.CompanyId}");
+
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ValidateManagerInfo(
+            DataImportRecord record,
+            Dictionary<string, DataImportRecord> records,
+            Dictionary<string, bool> recordsProcessed,
+            List<string> errors)
         {
             bool isValid;
 
-            if (rowsProcessed.TryGetValue(row.Id, out bool value))
+            if (recordsProcessed.TryGetValue(record.Id, out bool value))
             {
                 isValid = value;
             }
 
-            else if (string.IsNullOrWhiteSpace(row.ManagerEmployeeNumber))
+            else if (string.IsNullOrWhiteSpace(record.ManagerEmployeeNumber))
             {
                 isValid = true;
             }
 
             else
             {
-                rows.TryGetValue(BuildDataImportRowId(row.CompanyId!.Value, row.ManagerEmployeeNumber), out var managerInfo);
+                records.TryGetValue(record.ManagerId, out var managerInfo);
 
                 if (managerInfo is null)
                 {
                     isValid = false;
 
-                    errors.Add($"Record missing for manager with employee number {row.ManagerEmployeeNumber} in company with ID {row.CompanyId.Value}");
+                    errors.Add($"Record missing for manager with employee number {record.ManagerEmployeeNumber} in company with ID {record.CompanyId!.Value}");
                 }
 
                 else
                 {
-                    isValid = Validate(managerInfo, rows);
+                    isValid = ValidateManagerInfo(managerInfo, records, recordsProcessed, errors);
                 }
             }
 
-            rowsProcessed[row.Id] = isValid;
+            recordsProcessed[record.Id] = isValid;
 
             return isValid;
         }
-
-        private static string BuildDataImportRowId(int companyId, string employeeNumber) =>
-            $"{companyId}{employeeNumber}";
-    }
-
-    public class DataImportRow
-    {
-        public string Id => $"{CompanyId}{EmployeeNumber}";
-
-        public string EmployeeFullName => $"{EmployeeFirstName} {EmployeeLastName}";
-
-        public int? CompanyId { get; set; }
-
-        public string CompanyCode { get; set; } = string.Empty;
-
-        public string CompanyDescription { get; set; } = string.Empty;
-
-        public string EmployeeNumber { get; set; } = string.Empty;
-
-        public string EmployeeFirstName { get; set; } = string.Empty;
-
-        public string EmployeeLastName { get; set; } = string.Empty;
-
-        public string EmployeeEmail { get; set; } = string.Empty;
-
-        public string EmployeeDepartment { get; set; } = string.Empty;
-
-        public DateTime? HireDate { get; set; }
-
-        public string ManagerEmployeeNumber { get; set; } = string.Empty;
-    }
-
-    public class DataImportCompany
-    {
-        public int CompanyId { get; set; }
-    }
-
-    public class DataImportEmployee
-    {
-        public string EmployeeNumber { get; set; } = string.Empty;
-
-        public string ManagerEmployeeNumber {  get; set; } = string.Empty;
-
-        public bool? IsValid { get; set; }
     }
 }
