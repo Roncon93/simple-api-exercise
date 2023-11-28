@@ -22,14 +22,28 @@ namespace SimpleApiProject.Controllers
         [HttpPost]
         public async Task<IActionResult> Upload(IFormFile file)
         {
-            var errors = await dataImportService.Import(file);
-
-            if (errors.Any())
+            try
             {
-                return Ok(new { Errors = errors });
-            }
+                if (file.Length == 0)
+                {
+                    return BadRequest($"File {file.FileName} cannot be empty");
+                }
 
-            return Ok();
+                var errors = await dataImportService.Import(file);
+
+                if (errors.Any())
+                {
+                    return Ok(new { Errors = errors });
+                }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error was encountered while importing CSV file");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }

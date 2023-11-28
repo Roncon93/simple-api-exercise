@@ -27,8 +27,19 @@ namespace SimpleApiProject.Controllers
         /// </summary>
         /// <returns>The list of companies in a <see cref="CompanyHeaderDto"/> view.</returns>
         [HttpGet]
-        public async Task<IEnumerable<CompanyHeaderDto>> GetAll() =>
-            (await companyService.FindAll()).ToCompanyHeaderDto();
+        public async Task<IActionResult> GetAll()
+        {
+            try
+            {
+                return Ok((await companyService.FindAll()).ToCompanyHeaderDto());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error was encountered while retrieving companies");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
 
         /// <summary>
         /// Retrieves a single company by its ID.
@@ -38,14 +49,23 @@ namespace SimpleApiProject.Controllers
         [HttpGet("{companyId}")]
         public async Task<IActionResult> GetCompany(int companyId)
         {
-            var company = await companyService.Find(companyId);
-
-            if (company is null)
+            try
             {
-                return NotFound();
-            }
+                var company = await companyService.Find(companyId);
 
-            return Ok(company.ToCompanyDto());
+                if (company is null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(company.ToCompanyDto());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error was encountered while retrieving company");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         /// <summary>
@@ -57,14 +77,23 @@ namespace SimpleApiProject.Controllers
         [HttpGet("{companyId}/Employees/{employeeNumber}")]
         public async Task<IActionResult> GetEmployee(int companyId, string employeeNumber)
         {
-            var employee = await employeeService.Find(companyId, employeeNumber);
-
-            if (employee is null)
+            try
             {
-                return NotFound();
-            }
+                var employee = await employeeService.Find(companyId, employeeNumber);
 
-            return Ok(employee.ToEmployeeDto());
+                if (employee is null)
+                {
+                    return NotFound();
+                }
+
+                return Ok(employee.ToEmployeeDto());
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "An error was encountered while retrieving employee");
+
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
     }
 }
