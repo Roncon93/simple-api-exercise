@@ -33,6 +33,4 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.Services.GetService<IDataImportService>()!.Import();
-
 app.Run();

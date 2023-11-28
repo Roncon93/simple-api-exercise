@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using SimpleApiProject.Services;
 
 namespace SimpleApiProject.Controllers
 {
@@ -10,15 +11,19 @@ namespace SimpleApiProject.Controllers
     public class DataStoreController : ControllerBase
     {
         private readonly ILogger<DataStoreController> logger;
+        private readonly IDataImportService dataImportService;
 
-        public DataStoreController(ILogger<DataStoreController> logger)
+        public DataStoreController(ILogger<DataStoreController> logger, IDataImportService dataImportService)
         {
             this.logger = logger;
+            this.dataImportService = dataImportService;
         }
 
         [HttpPost]
-        public IActionResult Upload()
+        public IActionResult Upload(IFormFile file)
         {
+            dataImportService.Import(file);
+
             return Ok();
         }
     }
